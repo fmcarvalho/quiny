@@ -66,50 +66,39 @@ import java.util.function.Predicate;
  * @author Miguel Gamboa
  *         created on 21-04-2016
  */
-public class Queryable<T> {
+@FunctionalInterface
+public interface Queryable<T> extends Nonspliterator<T> {
 
-    private final Spliterator<T> dataSrc;
-
-    public Queryable(Spliterator<T> dataSrc) {
-        this.dataSrc = dataSrc;
+    static <T> boolean truth(Consumer<T> c, T item){
+        c.accept(item);
+        return true;
     }
 
     public static <T> Queryable<T> of(Collection<T> data) {
         final Iterator<T> dataSrc = data.iterator();
-        final Function<Consumer<? super T>, Boolean> tryAdvance = action -> {
-            if (dataSrc.hasNext()) {
-                action.accept(dataSrc.next());
-                return true;
-            }
-            return false;
-        };
-        return new Queryable<T>(new Nonspliterator<T>(tryAdvance));
+        return action -> dataSrc.hasNext() ? truth(action, dataSrc.next()) : false;
     }
 
-    public void forEach(Consumer<T> action) {
-        while (dataSrc.tryAdvance(action)) {
+    public default void forEach(Consumer<T> action) {
+        while (tryAdvance(action)) {
         }
     }
 
-    public <R> Queryable<R> map(Function<T, R> mapper) {
-        final Function<Consumer<? super R>, Boolean> tryAdvance =
-                action -> dataSrc.tryAdvance(item -> action.accept(mapper.apply(item)));
-        return new Queryable<R>(new Nonspliterator<R>(tryAdvance));
+    public default <R> Queryable<R> map(Function<T, R> mapper) {
+        return action -> tryAdvance(item -> action.accept(mapper.apply(item)));
     }
 
-    public Queryable<T> limit(long maxSize) {
+    public default Queryable<T> limit(long maxSize) {
         final int[] count = {0};
-        final Function<Consumer<? super T>, Boolean> tryAdvance =
-                action -> count[0]++ < maxSize ? dataSrc.tryAdvance(action) : false;
-        return new Queryable<T>(new Nonspliterator<T>(tryAdvance));
+        return action -> count[0]++ < maxSize ? tryAdvance(action) : false;
     }
 
-    public Queryable<T> distinct() {
+    public default Queryable<T> distinct() {
         final Set<T> selected = new HashSet<>();
-        final Function<Consumer<? super T>, Boolean> tryAdvance = action -> {
+        return action -> {
             boolean [] found = {false};
             while(!found[0]) {
-                boolean hasNext = dataSrc.tryAdvance(item -> {
+                boolean hasNext = tryAdvance(item -> {
                     if(selected.add(item)) {
                         action.accept(item);
                         found[0] = true;
@@ -119,14 +108,13 @@ public class Queryable<T> {
             }
             return found[0];
         };
-        return new Queryable<T>(new Nonspliterator<T>(tryAdvance));
     }
 
-    public Queryable<T> filter(Predicate<T> p) {
-        final Function<Consumer<? super T>, Boolean> tryAdvance = action -> {
+    public default Queryable<T> filter(Predicate<T> p) {
+        return action -> {
             boolean [] found = {false};
             while(!found[0]) {
-                boolean hasNext = dataSrc.tryAdvance(item -> {
+                boolean hasNext = tryAdvance(item -> {
                     if(p.test(item)) {
                         action.accept(item);
                         found[0] = true;
@@ -136,21 +124,20 @@ public class Queryable<T> {
             }
             return found[0];
         };
-        return new Queryable<T>(new Nonspliterator<T>(tryAdvance));
     }
 
-    public T reduce(T initial, BinaryOperator<T> accumulator) {
+    public default T reduce(T initial, BinaryOperator<T> accumulator) {
         final T[] res = (T[]) Array.newInstance(initial.getClass(), 1);
         res[0] = initial;
-        while (dataSrc.tryAdvance(item ->
+        while (tryAdvance(item ->
                 res[0] = accumulator.apply(res[0], item)
         )) ;
         return res[0];
     }
 
-    public <A> A[] toArray(IntFunction<A[]> generator) {
+    public default <A> A[] toArray(IntFunction<A[]> generator) {
         final List<T> res = new ArrayList<>();
-        while (dataSrc.tryAdvance(item -> res.add(item))) ;
+        while (tryAdvance(item -> res.add(item))) ;
         return res.toArray(generator.apply(res.size()));
     }
 }
