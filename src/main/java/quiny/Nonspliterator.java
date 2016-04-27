@@ -19,28 +19,37 @@ package quiny;
 
 import java.util.Spliterator;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * @author Miguel Gamboa
  *         created on 21-04-2016
  */
-public interface Nonspliterator<T> extends Spliterator<T> {
+public class Nonspliterator<T> implements Spliterator<T> {
+
+    private final Function<Consumer<? super T>, Boolean> srcTryAdvance;
+
+    public Nonspliterator(Function<Consumer<?super T>, Boolean> srcTryAdvance) {
+        this.srcTryAdvance = srcTryAdvance;
+    }
 
     @Override
-    public abstract boolean tryAdvance(Consumer<? super T> action);
+    public boolean tryAdvance(Consumer<? super T> action) {
+        return srcTryAdvance.apply(action);
+    }
 
     @Override
-    public default Spliterator<T> trySplit() {
+    public Spliterator<T> trySplit() {
         return null; // this spliterator cannot be split
     }
 
     @Override
-    public default long estimateSize() {
+    public long estimateSize() {
         return Long.MAX_VALUE; // Long.MAX_VALUE means unknown, or too expensive to compute.
     }
 
     @Override
-    public default int characteristics() {
+    public int characteristics() {
         return 0; // No characteristics
     }
 }
