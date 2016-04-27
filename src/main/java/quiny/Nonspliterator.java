@@ -25,31 +25,24 @@ import java.util.function.Function;
  * @author Miguel Gamboa
  *         created on 21-04-2016
  */
-public class Nonspliterator<T> implements Spliterator<T> {
-
-    private final Function<Consumer<? super T>, Boolean> srcTryAdvance;
-
-    public Nonspliterator(Function<Consumer<?super T>, Boolean> srcTryAdvance) {
-        this.srcTryAdvance = srcTryAdvance;
-    }
+@FunctionalInterface
+public interface Nonspliterator<T> extends Spliterator<T> {
 
     @Override
-    public boolean tryAdvance(Consumer<? super T> action) {
-        return srcTryAdvance.apply(action);
-    }
+    public abstract boolean tryAdvance(Consumer<? super T> action);
 
     @Override
-    public Spliterator<T> trySplit() {
+    public default Spliterator<T> trySplit() {
         return null; // this spliterator cannot be split
     }
 
     @Override
-    public long estimateSize() {
+    public default long estimateSize() {
         return Long.MAX_VALUE; // Long.MAX_VALUE means unknown, or too expensive to compute.
     }
 
     @Override
-    public int characteristics() {
+    public default int characteristics() {
         return 0; // No characteristics
     }
 }
