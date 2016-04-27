@@ -16,14 +16,8 @@
  */
 package quiny;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.function.BinaryOperator;
+import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -66,6 +60,12 @@ import java.util.function.Predicate;
  *         created on 21-04-2016
  */
 public class Queryable<T> {
+
+    private final Spliterator<T> dataSrc;
+
+    public Queryable(Spliterator<T> dataSrc) {
+        this.dataSrc = dataSrc;
+    }
 
     public static <T> Queryable<T> of(Collection<T> data) {
         throw new UnsupportedOperationException();
