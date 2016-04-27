@@ -1,5 +1,5 @@
 group 'com.github.fmcarvalho'
-version '3.2-SNAPSHOT'
+version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
 
