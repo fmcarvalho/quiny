@@ -19,7 +19,10 @@ package quiny;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
@@ -72,7 +75,15 @@ public class Queryable<T> {
     }
 
     public static <T> Queryable<T> of(Collection<T> data) {
-        return new Queryable<T>(new NonspliteratorIterator(data.iterator()));
+        final Iterator<T> dataSrc = data.iterator();
+        final Function<Consumer<? super T>, Boolean> tryAdvance = action -> {
+            if (dataSrc.hasNext()) {
+                action.accept(dataSrc.next());
+                return true;
+            }
+            return false;
+        };
+        return new Queryable<T>(new Nonspliterator<T>(tryAdvance));
     }
 
     public void forEach(Consumer<T> action) {
@@ -81,19 +92,51 @@ public class Queryable<T> {
     }
 
     public <R> Queryable<R> map(Function<T, R> mapper) {
-        return new Queryable<>(new NonspliteratorMapper<>(dataSrc, mapper));
+        final Function<Consumer<? super R>, Boolean> tryAdvance =
+                action -> dataSrc.tryAdvance(item -> action.accept(mapper.apply(item)));
+        return new Queryable<R>(new Nonspliterator<R>(tryAdvance));
     }
 
     public Queryable<T> limit(long maxSize) {
-        return new Queryable<>(new NonspliteratorLimited<>(dataSrc, maxSize));
+        final int[] count = {0};
+        final Function<Consumer<? super T>, Boolean> tryAdvance =
+                action -> count[0]++ < maxSize ? dataSrc.tryAdvance(action) : false;
+        return new Queryable<T>(new Nonspliterator<T>(tryAdvance));
     }
 
     public Queryable<T> distinct() {
-        return new Queryable<>(new NonspliteratorDistinct<>(dataSrc));
+        final Set<T> selected = new HashSet<>();
+        final Function<Consumer<? super T>, Boolean> tryAdvance = action -> {
+            boolean [] found = {false};
+            while(!found[0]) {
+                boolean hasNext = dataSrc.tryAdvance(item -> {
+                    if(selected.add(item)) {
+                        action.accept(item);
+                        found[0] = true;
+                    }
+                });
+                if(!hasNext) break;
+            }
+            return found[0];
+        };
+        return new Queryable<T>(new Nonspliterator<T>(tryAdvance));
     }
 
     public Queryable<T> filter(Predicate<T> p) {
-        return new Queryable<>(new NonspliteratorFilter<>(dataSrc, p));
+        final Function<Consumer<? super T>, Boolean> tryAdvance = action -> {
+            boolean [] found = {false};
+            while(!found[0]) {
+                boolean hasNext = dataSrc.tryAdvance(item -> {
+                    if(p.test(item)) {
+                        action.accept(item);
+                        found[0] = true;
+                    }
+                });
+                if(!hasNext) break;
+            }
+            return found[0];
+        };
+        return new Queryable<T>(new Nonspliterator<T>(tryAdvance));
     }
 
     public T reduce(T initial, BinaryOperator<T> accumulator) {
