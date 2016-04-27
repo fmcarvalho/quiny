@@ -16,7 +16,9 @@
  */
 package quiny;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -72,24 +74,29 @@ public class Queryable<T> {
     }
 
     public void forEach(Consumer<T> action) {
-        while (dataSrc.tryAdvance(action)) { }
+        while (dataSrc.tryAdvance(action)) {
+        }
     }
 
     public <R> Queryable<R> map(Function<T, R> mapper) {
-        throw new UnsupportedOperationException();
+        return new Queryable<>(new NonspliteratorMapper<>(dataSrc, mapper));
     }
 
     public Queryable<T> limit(long maxSize) {
-        throw new UnsupportedOperationException();
-    }
-    
-    public Queryable<T> distinct() {
-        throw new UnsupportedOperationException();
+        return new Queryable<>(new NonspliteratorLimited<>(dataSrc, maxSize));
     }
 
-    public Queryable<T> filter(Predicate<T> p) { throw new UnsupportedOperationException(); }
+    public Queryable<T> distinct() {
+        return new Queryable<>(new NonspliteratorDistinct<>(dataSrc));
+    }
+
+    public Queryable<T> filter(Predicate<T> p) {
+        return new Queryable<>(new NonspliteratorFilter<>(dataSrc, p));
+    }
 
     public <A> A[] toArray(IntFunction<A[]> generator) {
-        throw new UnsupportedOperationException();
+        final List<T> res = new ArrayList<>();
+        while (dataSrc.tryAdvance(item -> res.add(item))) ;
+        return res.toArray(generator.apply(res.size()));
     }
 }
