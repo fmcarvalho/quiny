@@ -72,7 +72,7 @@ public class Queryable<T> {
     }
 
     public void forEach(Consumer<T> action) {
-        throw new UnsupportedOperationException();
+        while (dataSrc.tryAdvance(action)) { }
     }
 
     public <R> Queryable<R> map(Function<T, R> mapper) {
