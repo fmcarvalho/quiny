@@ -19,10 +19,8 @@ package quiny;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.Spliterator;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -67,29 +65,49 @@ import java.util.function.Predicate;
  */
 public class Queryable<T> {
 
+    private final Spliterator<T> dataSrc;
+
+    public Queryable(Spliterator<T> dataSrc) {
+        this.dataSrc = dataSrc;
+    }
+
     public static <T> Queryable<T> of(Collection<T> data) {
-        throw new UnsupportedOperationException();
+        return new Queryable<T>(new NonspliteratorIterator(data.iterator()));
     }
 
     public void forEach(Consumer<T> action) {
-        throw new UnsupportedOperationException();
+        while (dataSrc.tryAdvance(action)) {
+        }
     }
 
     public <R> Queryable<R> map(Function<T, R> mapper) {
-        throw new UnsupportedOperationException();
+        return new Queryable<>(new NonspliteratorMapper<>(dataSrc, mapper));
     }
 
     public Queryable<T> limit(long maxSize) {
-        throw new UnsupportedOperationException();
-    }
-    
-    public Queryable<T> distinct() {
-        throw new UnsupportedOperationException();
+        return new Queryable<>(new NonspliteratorLimited<>(dataSrc, maxSize));
     }
 
-    public Queryable<T> filter(Predicate<T> p) { throw new UnsupportedOperationException(); }
+    public Queryable<T> distinct() {
+        return new Queryable<>(new NonspliteratorDistinct<>(dataSrc));
+    }
+
+    public Queryable<T> filter(Predicate<T> p) {
+        return new Queryable<>(new NonspliteratorFilter<>(dataSrc, p));
+    }
+
+    public T reduce(T initial, BinaryOperator<T> accumulator) {
+        final T[] res = (T[]) Array.newInstance(initial.getClass(), 1);
+        res[0] = initial;
+        while (dataSrc.tryAdvance(item ->
+                res[0] = accumulator.apply(res[0], item)
+        )) ;
+        return res[0];
+    }
 
     public <A> A[] toArray(IntFunction<A[]> generator) {
-        throw new UnsupportedOperationException();
+        final List<T> res = new ArrayList<>();
+        while (dataSrc.tryAdvance(item -> res.add(item))) ;
+        return res.toArray(generator.apply(res.size()));
     }
 }
