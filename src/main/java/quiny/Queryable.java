@@ -16,10 +16,12 @@
  */
 package quiny;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Spliterator;
+import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -92,6 +94,15 @@ public class Queryable<T> {
 
     public Queryable<T> filter(Predicate<T> p) {
         return new Queryable<>(new NonspliteratorFilter<>(dataSrc, p));
+    }
+
+    public T reduce(T initial, BinaryOperator<T> accumulator) {
+        final T[] res = (T[]) Array.newInstance(initial.getClass(), 1);
+        res[0] = initial;
+        while (dataSrc.tryAdvance(item ->
+                res[0] = accumulator.apply(res[0], item)
+        )) ;
+        return res[0];
     }
 
     public <A> A[] toArray(IntFunction<A[]> generator) {
