@@ -68,7 +68,7 @@ public class Queryable<T> {
     }
 
     public static <T> Queryable<T> of(Collection<T> data) {
-        throw new UnsupportedOperationException();
+        return new Queryable<T>(new NonspliteratorIterator(data.iterator()));
     }
 
     public void forEach(Consumer<T> action) {
