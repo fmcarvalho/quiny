@@ -53,7 +53,7 @@ interface Queryable<T>{
 
   public static <T> Queryable<T> of(Iterable<T> data) {
     final Iterator<T> dataSrc = data.iterator();
-    return action -> dataSrc.hasNext() ? truth(action, dataSrc.next()) : false;
+    return action -> dataSrc.hasNext() && truth(action, dataSrc.next());
   }
 
   public default void forEach(Consumer<? super T> action) {
