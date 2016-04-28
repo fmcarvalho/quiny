@@ -324,6 +324,8 @@ It provides a default implementation for the partitioning methods (`trySplit()`,
 ` estimateSize()` and ` characteristics()`) that avoids partitioning.
 Remember that parallel processing is out of the scope.
 
+<img src="https://raw.githubusercontent.com/fmcarvalho/quiny/master/assets/quiny.jpg" width="500">
+
 Maybe we could refactor code and include a `srcIterator` field in `Nonspliterator<T>`,
 but in the case of `NonspliteratorMapper` the `tryAdvance()` method receives a
 `Consumer<R>` that is parametrized with a type `R`  different of `T`. So a generic
