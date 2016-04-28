@@ -38,55 +38,41 @@ For now I will just show you how you can develop a very short implementation of 
 `limit()` and `forEach()`. This implementation is **purely functional** and does not reuse
 any code of the new default methods provided in Java 8. Moreover it preserves the internal
 iteration approach; it is lazy and also provides a fluent idiom. You can copy paste it and
-test it, just like it is. In the next sections I give a deeper and more detailed explanation
+test it, just like it is. 
+
+```java
+@FunctionalInterface
+interface Queryable<T>{
+
+  abstract boolean tryAdvance(Consumer<? super T> action); // <=> Spliterator::tryAdvance
+
+  static <T> boolean truth(Consumer<T> c, T item){
+    c.accept(item);
+    return true;
+  }
+
+  public static <T> Queryable<T> of(Iterable<T> data) {
+    final Iterator<T> dataSrc = data.iterator();
+    return action -> dataSrc.hasNext() ? truth(action, dataSrc.next()) : false;
+  }
+
+  public default void forEach(Consumer<? super T> action) {
+    while (tryAdvance(action)) { }
+  }
+
+  public default <R> Queryable<R> map(Function<T, R> mapper) {
+    return action -> tryAdvance(item -> action.accept(mapper.apply(item)));
+  }
+  
+  public default Queryable<T> limit(long maxSize) {
+    final int[] count = {0};
+    return action -> count[0]++ < maxSize ? tryAdvance(action) : false;
+  }
+}
+```
+
+In the next sections I give a deeper and more detailed explanation
 about this solution.
-
-First we create a new `Nonspliterator<T>` interface that inherits from `Spliterator<T>`,
-removes the partitioning and characteristics feature and just specifies the iteration
-capability.
-
-```java
-interface Nonspliterator<T> extends Spliterator<T> {
-
-    @Override boolean tryAdvance(Consumer<? super T> action);
-
-    @Override public default Spliterator<T> trySplit() { return null; }
-
-    @Override public default long estimateSize() { return Long.MAX_VALUE; }
-
-    @Override public default int characteristics() { return 0; }
-}
-```
-
-And next we can implement `Queryable<T>` just like follows:
-
-```java
-public interface Queryable<T> extends Nonspliterator<T> {
-
-    static <T> boolean truth(Consumer<T> c, T item){
-        c.accept(item);
-        return true;
-    }
-
-    public static <T> Queryable<T> of(Collection<T> data) {
-        final Iterator<T> dataSrc = data.iterator();
-        return action -> dataSrc.hasNext() ? truth(action, dataSrc.next()) : false;
-    }
-
-    public default void forEach(Consumer<T> action) {
-        while (tryAdvance(action)) { }
-    }
-
-    public default <R> Queryable<R> map(Function<T, R> mapper) {
-        return action -> tryAdvance(item -> action.accept(mapper.apply(item)));
-    }
-
-    public default Queryable<T> limit(long maxSize) {
-        final int[] count = {0};
-        return action -> count[0]++ < maxSize ? tryAdvance(action) : false;
-    }
-}
-```
 
 ##Introduction
 
