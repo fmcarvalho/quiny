@@ -23,7 +23,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.Spliterator;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -74,14 +73,33 @@ public interface Queryable<T> extends Nonspliterator<T> {
         return true;
     }
 
+    /**
+     * Applies the {@code action} consumer to the next item in query that satisfies the predicate, if one exists.
+     * @param query the {@link Queryable} to iterate from.
+     * @param pred the {@link Predicate} to test each element
+     * @param action the {@link Consumer} to apply to the item that satisfies the predicate
+     * @param <T> the type of the elements in {@link Queryable}
+     * @return {@code true} if en item that satisfies the predicate exists; {@code false} otherwise.
+     */
+    static <T> boolean consumeNext(Queryable<T> query, Predicate<T> pred, Consumer<? super T> action) {
+        final boolean[] found = {false};
+        while (!found[0] &&
+                query.tryAdvance(e -> {
+                    if(pred.test(e)) {
+                        action.accept(e);
+                        found[0] = true;
+                    }
+                }));
+        return found[0];
+    }
+
     public static <T> Queryable<T> of(Collection<T> data) {
         final Iterator<T> dataSrc = data.iterator();
         return action -> dataSrc.hasNext() ? truth(action, dataSrc.next()) : false;
     }
 
     public default void forEach(Consumer<T> action) {
-        while (tryAdvance(action)) {
-        }
+        while (tryAdvance(action));
     }
 
     public default <R> Queryable<R> map(Function<T, R> mapper) {
@@ -95,49 +113,24 @@ public interface Queryable<T> extends Nonspliterator<T> {
 
     public default Queryable<T> distinct() {
         final Set<T> selected = new HashSet<>();
-        return action -> {
-            boolean [] found = {false};
-            while(!found[0]) {
-                boolean hasNext = tryAdvance(item -> {
-                    if(selected.add(item)) {
-                        action.accept(item);
-                        found[0] = true;
-                    }
-                });
-                if(!hasNext) break;
-            }
-            return found[0];
-        };
+        return action -> consumeNext(this, selected::add, action);
     }
 
     public default Queryable<T> filter(Predicate<T> p) {
-        return action -> {
-            boolean [] found = {false};
-            while(!found[0]) {
-                boolean hasNext = tryAdvance(item -> {
-                    if(p.test(item)) {
-                        action.accept(item);
-                        found[0] = true;
-                    }
-                });
-                if(!hasNext) break;
-            }
-            return found[0];
-        };
+        return action -> consumeNext(this, p, action);
     }
+
 
     public default T reduce(T initial, BinaryOperator<T> accumulator) {
         final T[] res = (T[]) Array.newInstance(initial.getClass(), 1);
         res[0] = initial;
-        while (tryAdvance(item ->
-                res[0] = accumulator.apply(res[0], item)
-        )) ;
+        forEach(e -> res[0] = accumulator.apply(res[0], e));
         return res[0];
     }
 
     public default <A> A[] toArray(IntFunction<A[]> generator) {
         final List<T> res = new ArrayList<>();
-        while (tryAdvance(item -> res.add(item))) ;
+        forEach(e -> res.add(e));
         return res.toArray(generator.apply(res.size()));
     }
 }
