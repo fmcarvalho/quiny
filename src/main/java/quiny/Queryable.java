@@ -15,12 +15,17 @@
 
 package quiny;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 public interface Queryable<T> {
@@ -68,9 +73,25 @@ public interface Queryable<T> {
 		return cons -> forEach(e -> cons.accept(mapper.apply(e)));
 	}
 
+	public default Queryable<T> limit(long maxSize) {
+		final int[] count = {0};
+		return cons -> forEach(e -> {
+			if (count[0]++ < maxSize )
+				cons.accept(e);
+		});
+	}
+
 	default public Queryable<T> filter(Predicate<T> pred) {
 		return cons -> forEach(e -> {
 			if (pred.test(e))
+				cons.accept(e);
+		});
+	}
+
+	default public Queryable<T> distinct() {
+		final Set<T> selected = new HashSet<>();
+		return cons -> forEach(e -> {
+			if (selected.add(e))
 				cons.accept(e);
 		});
 	}
@@ -94,6 +115,12 @@ public interface Queryable<T> {
 					cons.accept(e);
 			});
 		};
+	}
+
+	public default <A> A[] toArray(IntFunction<A[]> generator) {
+		final List<T> res = new ArrayList<>();
+		forEach(e -> res.add(e));
+		return res.toArray(generator.apply(res.size()));
 	}
 
 	public static <T> Queryable<T> of(Iterable<T> elements) {
