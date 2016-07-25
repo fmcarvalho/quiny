@@ -17,57 +17,92 @@ to the use of `Stream<T>`. You can replace the `Queryable.of(dataSrc)` call with
 `dataSrc.stream()` and you will get the same result.
 You can try it your self by copying the implementation code of section [Queryable at 
 a glance](https://github.com/fmcarvalho/quiny/#queryable-at-a-glance) and execute
-the example of [Figure 1](#fig-stream-use-case). Challenge yourself and 
-add new query methods to `Queryable<T>`.  All you have to do is just return a 
-new lambda that implements the `tryAdvance(action)` logic.
+the example of [Figure 1](#fig-stream-use-case). 
 
 <a name="fig-stream-use-case"><em>Figure 1:</em></a>
 ```java
-Collection<String> dataSrc = ...  // something
-Queryable.of(dataSrc)             // <=> dataSrc.stream()
-   .filter(w -> !w.startsWith("-"))
-   .distinct()   
-   .map(String::length)
-   .limit(5)
-   .forEach(System.out::println)
+Collection<String> dataSrc = Arrays.asList("qui", "-", "uni",  "-", "is",  "-", "qui", "uni", "nat", "yes", "flu", "sty");
+
+Queryable.of(dataSrc)                      // <=> dataSrc.stream()
+         .forEach(System.out::println);    // qui - uni - is - qui uni nat yes flu sty
+
+Queryable.of(dataSrc)                      // <=> dataSrc.stream()
+         .map(word -> word.substring(0, 1))
+         .filter(word -> !word.equals("-"))
+         .distinct()
+         .limit(5)
+         .forEach(System.out::print);      // > quiny
 ```
 
 ##Queryable<T> at a glance
 
 For now I will just show you how you can develop a very short implementation of `map()`,
-`limit()` and `forEach()`. This implementation is **purely functional** and does not reuse
-any code of the new default methods provided in Java 8. Moreover it preserves the internal
-iteration approach; it is lazy and also provides a fluent idiom. You can copy paste it and
+`limit()` and `forEach()` (`filter()` and `distinct()` methods are also provided in the 
+following example with a little bit more complexity). 
+This implementation does not reuse
+any code of the new default methods provided in Java 8. Moreover it preserves the **internal
+iteration** approach; it is **lazy** and also provides a **fluent** idiom. You can copy paste it and
 test it, just like it is. 
+Challenge yourself and add new query methods to `Queryable<T>`.  
+All you have to do is just return a new lambda that implements the `tryAdvance(action)` logic.
 
 ```java
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Optional;
+import java.util.function.BinaryOperator;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
 @FunctionalInterface
 interface Queryable<T>{
 
-  abstract boolean tryAdvance(Consumer<? super T> action); // <=> Spliterator::tryAdvance
+    public static <T> Queryable<T> of(Iterable<T> data) {
+        final Iterator<T> dataSrc = data.iterator();
+        return action -> dataSrc.hasNext() && truth(action, dataSrc.next());
+    }
 
-  static <T> boolean truth(Consumer<T> c, T item){
-    c.accept(item);
-    return true;
-  }
+    abstract boolean tryAdvance(Consumer<? super T> action); // <=> Spliterator::tryAdvance
 
-  public static <T> Queryable<T> of(Iterable<T> data) {
-    final Iterator<T> dataSrc = data.iterator();
-    return action -> dataSrc.hasNext() && truth(action, dataSrc.next());
-  }
+    public default void forEach(Consumer<? super T> action) {
+        while (tryAdvance(action)) { }
+    }
 
-  public default void forEach(Consumer<? super T> action) {
-    while (tryAdvance(action)) { }
-  }
+    public default <R> Queryable<R> map(Function<T, R> mapper) {
+        return action -> tryAdvance(item -> action.accept(mapper.apply(item)));
+    }
 
-  public default <R> Queryable<R> map(Function<T, R> mapper) {
-    return action -> tryAdvance(item -> action.accept(mapper.apply(item)));
-  }
-  
-  public default Queryable<T> limit(long maxSize) {
-    final int[] count = {0};
-    return action -> count[0]++ < maxSize ? tryAdvance(action) : false;
-  }
+    public default Queryable<T> limit(long maxSize) {
+        final int[] count = {0};
+        return action -> count[0]++ < maxSize ? tryAdvance(action) : false;
+    }
+
+    public default Queryable<T> distinct() {
+        final HashSet<T> selected = new HashSet<>();
+        return action -> consumeNext(this, selected::add, action);
+    }
+
+    public default Queryable<T> filter(Predicate<T> p) {
+        return action -> consumeNext(this, p, action);
+    }
+
+    static <T> boolean truth(Consumer<T> c, T item){
+        c.accept(item);
+        return true;
+    }
+
+    /**
+     * Auxiliary method, which applies the {@code action} consumer to the next item
+     * in query that satisfies the predicate, if one exists.
+     */
+    static <T> boolean consumeNext(Queryable<T> query, Predicate<T> pred, Consumer<? super T> action) {
+        final boolean[] found = {false};
+        final boolean hasNext = query.tryAdvance(e -> { if(pred.test(e)) found[0] = truth(action, e); });
+        return !found[0] && hasNext ? consumeNext(query, pred, action) : hasNext;
+    }
 }
 ```
 
