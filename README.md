@@ -15,7 +15,7 @@ only with the essential backbone that provides a query API.
 [Figure 1](#fig-stream-use-case), shows an example using `Queryable<T>` that is equivalent
 to the use of `Stream<T>`. You can replace the `Queryable.of(dataSrc)` call with
 `dataSrc.stream()` and you will get the same result.
-You can try it your self by copying the implementation code of section [Queryable at 
+You can try it yourself by copying the implementation code of section [Queryable at 
 a glance](https://github.com/fmcarvalho/quiny/#queryable-at-a-glance) and execute
 the example of [Figure 1](#fig-stream-use-case). 
 
@@ -31,7 +31,7 @@ Queryable.of(dataSrc)                      // <=> dataSrc.stream()
          .filter(word -> !word.equals("-"))
          .distinct()
          .limit(5)
-         .forEach(System.out::print);      // > quiny
+         .forEach(System.out::print);      // quiny
 ```
 
 ##Queryable<T> at a glance
@@ -44,15 +44,13 @@ any code of the new default methods provided in Java 8. Moreover it preserves th
 iteration** approach; it is **lazy** and also provides a **fluent** idiom. You can copy paste it and
 test it, just like it is. 
 Challenge yourself and add new query methods to `Queryable<T>`.  
-All you have to do is just return a new lambda that implements the `tryAdvance(action)` logic.
+All you have to do is just return a new lambda that implements the `tryAdvance(Consumer<T>)` logic.
 
 ```java
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Optional;
-import java.util.function.BinaryOperator;
+import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -61,8 +59,8 @@ import java.util.function.Predicate;
 interface Queryable<T>{
 
     public static <T> Queryable<T> of(Iterable<T> data) {
-        final Iterator<T> dataSrc = data.iterator();
-        return action -> dataSrc.hasNext() && truth(action, dataSrc.next());
+        final Spliterator<T> iter = data.spliterator();
+        return action -> iter.tryAdvance(action);
     }
 
     abstract boolean tryAdvance(Consumer<? super T> action); // <=> Spliterator::tryAdvance
