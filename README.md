@@ -15,7 +15,7 @@ only with the essential backbone that provides a query API.
 [Figure 1](#fig-stream-use-case), shows an example using `Queryable<T>` that is equivalent
 to the use of `Stream<T>`. You can replace the `Queryable.of(dataSrc)` call with
 `dataSrc.stream()` and you will get the same result.
-You can try it yourself by copying the implementation code of section [Queryable at 
+You can try it yourself copying the source code from section [Queryable at 
 a glance](https://github.com/fmcarvalho/quiny/#queryable-at-a-glance) and execute
 the example of [Figure 1](#fig-stream-use-case). 
 
@@ -23,15 +23,15 @@ the example of [Figure 1](#fig-stream-use-case).
 ```java
 Collection<String> dataSrc = Arrays.asList("qui", "-", "uni",  "-", "is",  "-", "qui", "uni", "nat", "yes", "flu", "sty");
 
-Queryable.of(dataSrc)                      // <=> dataSrc.stream()
-         .forEach(System.out::println);    // qui - uni - is - qui uni nat yes flu sty
+Queryable.of(dataSrc)                       // <=> dataSrc.stream()
+         .forEach(System.out::println);     // qui - uni - is - qui uni nat yes flu sty
 
-Queryable.of(dataSrc)                      // <=> dataSrc.stream()
-         .map(word -> word.substring(0, 1))
-         .filter(word -> !word.equals("-"))
-         .distinct()
-         .limit(5)
-         .forEach(System.out::print);      // quiny
+Queryable.of(dataSrc)                       // <=> dataSrc.stream()
+         .map(word -> word.substring(0, 1)) // q - u - i - q u n y f s
+         .filter(word -> !word.equals("-")) // q u i q u n y f s
+         .distinct()                        // q u i n y f s
+         .limit(5)                          // q u i n y
+         .forEach(System.out::print);       // quiny
 ```
 
 ##Queryable<T> at a glance
@@ -87,11 +87,6 @@ interface Queryable<T>{
         return action -> consumeNext(this, p, action);
     }
 
-    static <T> boolean truth(Consumer<T> c, T item){
-        c.accept(item);
-        return true;
-    }
-
     /**
      * Auxiliary method, which applies the {@code action} consumer to the next item
      * in query that satisfies the predicate, if one exists.
@@ -100,6 +95,11 @@ interface Queryable<T>{
         final boolean[] found = {false};
         final boolean hasNext = query.tryAdvance(e -> { if(pred.test(e)) found[0] = truth(action, e); });
         return !found[0] && hasNext ? consumeNext(query, pred, action) : hasNext;
+    }
+
+    static <T> boolean truth(Consumer<T> c, T item){
+        c.accept(item);
+        return true;
     }
 }
 ```
