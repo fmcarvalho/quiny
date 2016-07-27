@@ -37,7 +37,7 @@ Queryable.of(dataSrc)                       // <=> dataSrc.stream()
 ##Queryable<T> at a glance
 
 For now I will just show you how you can develop a very short implementation of `map()`,
-`limit()` and `forEach()` (`filter()` and `distinct()` methods are also provided in the 
+`limit()` and `forEach()` (we also include the `filter()` and `distinct()` methods in the 
 following example with a little bit more complexity). 
 This implementation does not reuse
 any code of the new default methods provided in Java 8. Moreover it preserves the **internal
@@ -109,17 +109,22 @@ about this solution.
 
 ##Introduction
 
-First, just to give you a brief about the implementation complexity of `Stream<T>`:
-if you look into `stream()` default method you will find the inner 
-`ReferencePipeline.Head<E_IN, E_OUT>` implementation of
-`Stream<T>` that in turns depends of a `Spliterator<?>` source stored in a `sourceSpliterator`
-field inherited from `AbstractPipeline`. For collections the `Spliterator<?>` is an
-instance of `IteratorSpliterator`. On the other hand, each intermediate operation
-(such as, `filter`, `map`, etc) returns a new instance of ` StatelessOp<E_IN, E_OUT>`
-which in turn creates an new instance of `Sink.ChainedReference<…>` that is used  to
-conduct values through the stages of a stream pipeline, with additional methods to
-manage size information, control flow, etc. Moreover you still have to dig into the
-additional infrastructure that supports partitioning for parallel processing.
+When I started learning the `java.util.stream` API there were a couple of questions
+that came to my mind: 
+
+* Why Java 8 introduces a new iterator interface called `Spliterator<T>`?
+
+* Why Java 8 does not extended the existent `Iterable<T>`/`Iterator<T>`
+(as [.net linq](https://en.wikipedia.org/wiki/Language_Integrated_Query) did)?
+
+* How should I implement an extra query method that is unavailable on `Stream<T>` API?
+
+* How can I make my own implementation of `Stream<T>`?
+
+However it is difficult to figure out an answer for these questions only looking
+for `Stream<T>` implementation. If you dig into `Stream<T>` source code, you will
+be overwhelmed by extra auxiliary classes and methods that manage size information,
+control flow, and support partitioning for parallel processing.
 
 So, I would like to take off all this infrastructure panoply and stay only with the
 essential backbone that allows the **internal iteration** feature, **laziness**
@@ -137,8 +142,15 @@ can jump directly to the implementation of the last version of
 
 In this repository I provide three implementations of `Queryable<T>` in three different
 braches:
-* [version1--oo](https://github.com/fmcarvalho/quiny/tree/version1-oo/) – following an object oriented approach.
-* [version2](https://github.com/fmcarvalho/quiny/tree/version2) – version 1 simplification
+
+* [version1--oo](https://github.com/fmcarvalho/quiny/tree/version1-oo/) – following 
+an object oriented approach, where each query method returns an instance of class that 
+implements the `Nonspliterator<T>` (the equivalent to the `java.util.Spliterator<T>` 
+without the partitioning feature).
+* [version2](https://github.com/fmcarvalho/quiny/tree/version2) – version 1 simplification,
+which replaces every subclass of `Nonspliterator<T>` with one unique implementation
+that depends of a `Function<Consumer<T>, Boolean>` representing the `tryAdvance(Consumer<T>)`
+logic.
 * [version3-functional](https://github.com/fmcarvalho/quiny/tree/version3-functional/) – a functional approach without instance fields, no objects instantiation an no constructors.
 
 
